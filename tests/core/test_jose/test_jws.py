@@ -184,6 +184,63 @@ class JWSTest(unittest.TestCase):
         s = jws.serialize(header, b'hello', 'secret')
         self.assertIsInstance(s, dict)
 
+    def test_validate_crit_header_with_serialize(self):
+        jws = JsonWebSignature()
+        protected = {"alg": "HS256", "kid": "1", "crit": ["kid"]}
+        jws.serialize(protected, b"hello", "secret")
+
+        protected = {"alg": "HS256", "crit": ["kid"]}
+        self.assertRaises(
+            errors.InvalidCritHeaderParameterNameError,
+            jws.serialize, protected, b"hello", "secret"
+        )
+
+        protected = {"alg": "HS256", "invalid": "1", "crit": ["invalid"]}
+        self.assertRaises(
+            errors.InvalidCritHeaderParameterNameError,
+            jws.serialize, protected, b"hello", "secret"
+        )
+
+    def test_validate_crit_header_with_deserialize(self):
+        jws = JsonWebSignature()
+        case1 = "eyJhbGciOiJIUzI1NiIsImNyaXQiOlsia2lkIl19.aGVsbG8.RVimhJH2LRGAeHy0ZcbR9xsgKhzhxIBkHs7S_TDgWvc"
+        self.assertRaises(
+            errors.InvalidCritHeaderParameterNameError,
+            jws.deserialize, case1, "secret"
+        )
+
+        case2 = (
+            "eyJhbGciOiJIUzI1NiIsImludmFsaWQiOiIxIiwiY3JpdCI6WyJpbnZhbGlkIl19."
+            "aGVsbG8.ifW_D1AQWzggrpd8npcnmpiwMD9dp5FTX66lCkYFENM"
+        )
+        self.assertRaises(
+            errors.InvalidCritHeaderParameterNameError,
+            jws.deserialize, case2, "secret"
+        )
+
+    def test_unprotected_crit_rejected_in_json_serialize(self):
+        jws = JsonWebSignature()
+        protected = {"alg": "HS256", "kid": "a"}
+        # Place 'crit' in unprotected header; must be rejected
+        header = {"protected": protected, "header": {"kid": "a", "crit": ["kid"]}}
+        self.assertRaises(
+            errors.InvalidHeaderParameterName,
+            jws.serialize_json, header, b"hello", "secret"
+        )
+
+    def test_unprotected_crit_rejected_in_json_deserialize(self):
+        jws = JsonWebSignature()
+        protected = {"alg": "HS256", "kid": "a"}
+        header = {"protected": protected, "header": {"kid": "a"}}
+        data = jws.serialize_json(header, b"hello", "secret")
+        # Tamper by adding 'crit' into the unprotected header; must be rejected
+        data_tampered = dict(data)
+        data_tampered["header"] = {"kid": "a", "crit": ["kid"]}
+        self.assertRaises(
+            errors.InvalidHeaderParameterName,
+            jws.deserialize_json, data_tampered, "secret"
+        )
+
     def test_EdDSA_alg(self):
         jws = JsonWebSignature(algorithms=['EdDSA'])
         private_key = read_file_path('ed25519-pkcs8.pem')

@@ -34,6 +34,14 @@ class InvalidHeaderParameterName(JoseError):
             description=description)
 
 
+class InvalidCritHeaderParameterNameError(JoseError):
+    error = "invalid_crit_header_parameter_name"
+
+    def __init__(self, name):
+        description = 'Invalid Header Parameter Name: {}'.format(name)
+        super(InvalidCritHeaderParameterNameError, self).__init__(description=description)
+
+
 class MissingEncryptionAlgorithmError(JoseError):
     error = 'missing_encryption_algorithm'
     description = 'Missing "enc" in header'
