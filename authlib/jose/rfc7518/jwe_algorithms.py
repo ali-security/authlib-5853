@@ -3,6 +3,9 @@ from .oct_key import OctKey
 from ._cryptography_backends import JWE_ALG_ALGORITHMS, JWE_ENC_ALGORITHMS
 from ..rfc7516 import JWEAlgorithm, JWEZipAlgorithm, JsonWebEncryption
 
+GZIP_HEAD = bytes([120, 156])
+MAX_SIZE = 250 * 1024
+
 
 class DirectAlgorithm(JWEAlgorithm):
     name = 'dir'
@@ -31,12 +34,20 @@ class DeflateZipAlgorithm(JWEZipAlgorithm):
     def compress(self, s):
         """Compress bytes data with DEFLATE algorithm."""
         data = zlib.compress(s)
-        # drop gzip headers and tail
+        # https://datatracker.ietf.org/doc/html/rfc1951
+        # since DEF is always gzip, we can drop gzip headers and tail
         return data[2:-4]
 
     def decompress(self, s):
         """Decompress DEFLATE bytes data."""
-        return zlib.decompress(s, -zlib.MAX_WBITS)
+        if s.startswith(GZIP_HEAD):
+            decompressor = zlib.decompressobj()
+        else:
+            decompressor = zlib.decompressobj(-zlib.MAX_WBITS)
+        value = decompressor.decompress(s, MAX_SIZE)
+        if decompressor.unconsumed_tail:
+            raise ValueError("Decompressed string exceeds {} bytes".format(MAX_SIZE))
+        return value
 
 
 def register_jwe_rfc7518():
