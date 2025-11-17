@@ -250,3 +250,25 @@ class JWSTest(unittest.TestCase):
         header, payload = data['header'], data['payload']
         self.assertEqual(payload, b'hello')
         self.assertEqual(header['alg'], 'EdDSA')
+
+    def test_deserialize_exceeds_length(self):
+        jws = JsonWebSignature()
+        value = "aa" * 256000
+
+        # header exceeds length
+        self.assertRaises(
+            ValueError,
+            jws.deserialize, value + "." + value + "." + value, ""
+        )
+
+        # payload exceeds length
+        self.assertRaises(
+            ValueError,
+            jws.deserialize, "eyJhbGciOiJIUzI1NiJ9." + value + "." + value, ""
+        )
+
+        # signature exceeds length
+        self.assertRaises(
+            ValueError,
+            jws.deserialize, "eyJhbGciOiJIUzI1NiJ9.YQ." + value, ""
+        )

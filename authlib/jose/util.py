@@ -3,6 +3,9 @@ from authlib.common.encoding import urlsafe_b64decode, json_loads
 
 
 def extract_header(header_segment, error_cls):
+    if len(header_segment) > 256000:
+        raise ValueError("Value of header is too long")
+
     header_data = extract_segment(header_segment, error_cls, 'header')
 
     try:
@@ -16,6 +19,9 @@ def extract_header(header_segment, error_cls):
 
 
 def extract_segment(segment, error_cls, name='payload'):
+    if len(segment) > 256000:
+        raise ValueError("Value of {} is too long".format(name))
+
     try:
         return urlsafe_b64decode(segment)
     except (TypeError, binascii.Error):
